@@ -17,6 +17,7 @@ class Solver:
                 self._loaded += [x.replace('\n', '').lower() for x in f.readlines()]
         self._recognized = list()
         self._unrecognized = list()
+        self._unsolvable = list()
         self._should_type = True
 
     @property
@@ -41,8 +42,12 @@ class Solver:
 
     def require(self, word_to_solve: str):
         string = word_to_solve.replace(CCell.unknown, '*')
+        if string in self._unsolvable:
+            return False
         answer = input(f"- Can you solve the word '{string}'? (leave empty to skip) ")
         if answer:
             self._recognized.append(answer.lower())
             return True
-        return False
+        else:
+            self._unsolvable.append(string)
+            return False
