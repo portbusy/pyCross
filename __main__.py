@@ -8,12 +8,9 @@ def print_col(matrix: CMatrix):
 
 
 def main():
-    Solver()
-    print("Loading matrix..")
-    matrix = CMatrix.from_text('schema/crossword.csv')
-    print("Solving..")
-    matrix: CMatrix = matrix.fill()
-    matrix.solve(True)
+    solver = Solver()
+    solver.init()
+    solver.solve('schema/crossword.csv', True)
 
 
 if __name__ == '__main__':
