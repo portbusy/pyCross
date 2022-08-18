@@ -1,4 +1,4 @@
-from ccross import Solver
+from ecross import Solver
 
 
 def main():
