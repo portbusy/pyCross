@@ -31,14 +31,14 @@ class SolverInstance:
     def vocabulary(self) -> typing.List[str]:
         return self._solver.vocabulary + self._recognized
 
-    def match(self, string: str) -> typing.List[str]:
+    def matches(self, string: str) -> typing.List[str]:
         return list(set(fnmatch.filter(self.vocabulary, string)))
 
     def contains(self, string: str) -> bool:
         return string in self.vocabulary
 
     def ask(self, string: str) -> bool:
-        if string in self._unrecognized:
+        if not self._solver.should_type or string in self._unrecognized:
             return False
         answer = input(f"- Do you recognize the word '{string}'? (Y/N) ")
         if answer.lower() == 'y':
@@ -48,6 +48,8 @@ class SolverInstance:
         return False
 
     def require(self, word_to_solve: str) -> bool:
+        if not self._solver.should_type:
+            return False
         string = word_to_solve.replace(CCell.unknown, '*')
         if string in self._unsolvable:
             return False
@@ -194,30 +196,29 @@ class CMatrix:
         """ Check if a word can have sense or if it exists in the vocabulary. """
         return w.length <= self._min_word or not w.is_solved or self._instance.contains(w.string)
 
-    def has_sense(self, should_type: bool=False) -> bool:
+    def has_sense(self) -> bool:
         """ Check if the matrix words has sense, also by asking to the solver, if required. """
         for word in self.row_words() + self.column_words():
             if not self._word_has_sense(word):
-                return should_type and self._instance.ask(word.string)
+                return self._instance.ask(word.string)
         return True
 
-    def _find_matches(self, word: CWord):
+    def _r_find_matches(self, word: CWord):
         def _can_match(s: str):
             return ll == len(set([s[i] for i in word.unsolved_indexes]))
         ll = len(word.unsolved_indexes)
-        return [s for s in self._instance.match(word.string) if _can_match(s)]
+        matches = [s for s in self._instance.matches(word.string) if _can_match(s)]
+        if not matches and self._instance.require(word.string):
+            matches = self._r_find_matches(word)
+        return matches
 
-    def solve(self, should_type: bool=False):
+    def solve(self):
         """ Solve the matrix and return the solved branch, if any. """
         # Find next word to solve
         word_to_solve = self.next_word()
-        # Find word matches
-        matches = self._find_matches(word_to_solve)
-        # If there is no match for the word to solve, this is a wrong branch
-        if not matches:
-            if should_type and self._instance.require(word_to_solve.string):
-                matches = self._find_matches(word_to_solve)
-        # Find matches of the word to solve
+        # Check for matches with the word to solve, otherwise this is a wrong branch matrix
+        matches = self._r_find_matches(word_to_solve)
+        # If there is not match, get back
         print(f'{self.depth+1}) Solving: {word_to_solve}')
         # For each matching word
         branches: typing.Dict[str, CMatrix] = dict()
@@ -235,13 +236,13 @@ class CMatrix:
         branches = {k: v for k, v in sorted(branches.items(), key=lambda x: x[1].correctness)}
         for match, branch in branches.items():
             # If the solved words in the matrix make sense
-            if branch.has_sense(should_type):
+            if branch.has_sense():
                 # If the branch is solved, return the branch as the solution
                 if branch.is_solved:
                     return branch
                 else:
                     # Keep solving in depth and return the solution, if any
-                    solution = branch.solve(should_type)
+                    solution = branch.solve()
                     if solution:
                         return solution
             else:

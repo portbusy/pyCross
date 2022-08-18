@@ -1,20 +1,15 @@
-from ccross import Solver, CMatrix
-
-
-def print_col(matrix: CMatrix):
-    print('Cols: \n')
-    for cl in range(matrix.columns):
-        print([w.string for w in matrix.column_words(cl)])
+from ccross import Solver
 
 
 def main():
-    solver = Solver()
-    solver.init()
-    solver.solve('schema/crossword.csv', True)
+    print("Loading vocabulary..")
+    vocabulary = list()
+    for lang in ['it', 'en']:
+        with open(f'words/{lang}.txt') as f:
+            vocabulary += [x.replace('\n', '').lower() for x in f.readlines()]
+    solver = Solver(vocabulary, should_type=True)
+    solver.solve('schema/crossword.csv')
 
 
 if __name__ == '__main__':
-    """
-    Start the encrypted crosswords solver
-    """
     main()
